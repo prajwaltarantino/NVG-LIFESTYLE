@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // SCROLL ANIMATIONS
+  // PREMIUM SCROLL ANIMATIONS
   const elements = document.querySelectorAll(
     ".luxury-reveal, .luxury-left, .luxury-right, .luxury-zoom"
   );
@@ -91,6 +91,18 @@ document.addEventListener("mouseleave", function (e) {
   }
 });
 
+// EXTRA DESKTOP EXIT SUPPORT
+document.addEventListener("mouseout", function (e) {
+  if (
+    !e.relatedTarget &&
+    e.clientY <= 10 &&
+    leadPopup &&
+    leadPopup.classList.contains("hidden")
+  ) {
+    openLeadPopup();
+  }
+});
+
 // MOBILE POPUP AFTER 40% SCROLL
 let mobilePopupShown = false;
 
@@ -116,11 +128,13 @@ async function submitLead(formEl, intentValue) {
   showLoadingPopup();
 
   const formData = new FormData(formEl);
+  const intent = formData.get("intent") || intentValue;
+  const configuration = formData.get("configuration") || "Not Selected";
 
   const payload = {
     name: formData.get("name"),
     phone: formData.get("phone"),
-    intent: formData.get("intent") || intentValue
+    intent: `${intent} | ${configuration}`
   };
 
   try {
@@ -135,6 +149,13 @@ async function submitLead(formEl, intentValue) {
 
     hideLoadingPopup();
     showSuccessPopup();
+
+    if (typeof fbq === "function") {
+      fbq("track", "Lead");
+    }
+
+    unlockLocationFlow();
+
     formEl.reset();
     closeLeadPopup();
 
@@ -144,7 +165,7 @@ async function submitLead(formEl, intentValue) {
   } catch (error) {
     hideLoadingPopup();
     console.error(error);
-    alert("Something went wrong.");
+    alert("Something went wrong. Please try again.");
   }
 }
 
@@ -163,6 +184,9 @@ if (popupForm) {
 }
 
 function showLoadingPopup() {
+  const oldPopup = document.getElementById("loadingPopup");
+  if (oldPopup) oldPopup.remove();
+
   const popup = document.createElement("div");
   popup.id = "loadingPopup";
 
@@ -237,7 +261,11 @@ function hideLoadingPopup() {
 }
 
 function showSuccessPopup() {
+  const oldSuccess = document.getElementById("successSubmitPopup");
+  if (oldSuccess) oldSuccess.remove();
+
   const popup = document.createElement("div");
+  popup.id = "successSubmitPopup";
 
   popup.innerHTML = `
     <div style="
@@ -314,3 +342,78 @@ function showSuccessPopup() {
 
   document.body.appendChild(popup);
 }
+
+
+// PAGE LOADER
+window.addEventListener("load", function () {
+  const loader = document.getElementById("pageLoader");
+  if (loader) {
+    setTimeout(() => {
+      loader.classList.add("hide");
+    }, 900);
+  }
+});
+
+// SCROLL PROGRESS BAR
+window.addEventListener("scroll", function () {
+  const scrollProgress = document.getElementById("scrollProgress");
+  if (scrollProgress) {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const scrollPercent = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+    scrollProgress.style.width = scrollPercent + "%";
+  }
+});
+
+// GSAP PARALLAX + PREMIUM ENTRANCE
+window.addEventListener("load", function () {
+  if (window.gsap && window.ScrollTrigger) {
+    gsap.registerPlugin(ScrollTrigger);
+
+    gsap.utils.toArray(".parallax-image").forEach((img) => {
+      gsap.to(img, {
+        yPercent: 12,
+        ease: "none",
+        scrollTrigger: {
+          trigger: img,
+          start: "top bottom",
+          end: "bottom top",
+          scrub: 1.2
+        }
+      });
+    });
+  }
+});
+
+// FAQ ACCORDION
+document.querySelectorAll(".faq-question").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const item = btn.closest(".faq-item");
+    const answer = item.querySelector(".faq-answer");
+    item.classList.toggle("active");
+    answer.classList.toggle("hidden");
+  });
+});
+
+// UNLOCK LOCATION AFTER LEAD
+function unlockLocationFlow() {
+  const overlay = document.getElementById("mapOverlay");
+  const map = document.getElementById("projectMap");
+  if (overlay) overlay.style.display = "none";
+  if (map) {
+    map.classList.remove("pointer-events-none");
+    map.style.opacity = "1";
+  }
+}
+
+
+// FORCE HERO CONTENT VISIBLE
+document.addEventListener("DOMContentLoaded", function () {
+  const heroContent = document.getElementById("heroContent");
+  if (heroContent) {
+    heroContent.classList.add("show");
+    heroContent.style.opacity = "1";
+    heroContent.style.transform = "none";
+    heroContent.style.filter = "none";
+  }
+});
